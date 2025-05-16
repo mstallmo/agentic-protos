@@ -17,6 +17,7 @@ This project demonstrates how to:
 - Maintain persistent state using SQLite database
 - Apply Test-Driven Development (TDD) principles
 - Structure a Rust project with gRPC and database components
+- Use SQL migrations to manage database schema changes
 
 ## Project Structure
 
@@ -25,6 +26,9 @@ agentic-protos/
 ├── Cargo.toml           # Project dependencies
 ├── build.rs             # Build script for compiling protobufs
 ├── data.db              # SQLite database file (created at runtime)
+├── migrations/          # SQL migration files
+│   ├── 20240516000000_create_counters_table.sql
+│   └── 20240516000001_add_counter_stats.sql
 ├── protos/              # Protocol Buffer definitions
 │   └── hello_service.proto
 ├── src/
@@ -88,7 +92,8 @@ The project uses SQLite via the `sqlx` crate to provide persistent storage for c
 - Counter values are stored in a SQLite database (`data.db`)
 - Data persists between server restarts
 - Transactions ensure data integrity during concurrent operations
-- Automatic table and schema creation on first run
+- SQL migrations automatically apply schema changes on startup
+- Statistics tracking for counter operations
 
 ## Service Implementation
 
@@ -137,8 +142,9 @@ cargo run
 
 The server will:
 1. Create or connect to the SQLite database (`data.db`)
-2. Initialize the database schema if needed
-3. Listen on `[::1]:50052` (IPv6 localhost, port 50052)
+2. Apply any pending SQL migrations from the `migrations` directory
+3. Initialize the database schema if needed
+4. Listen on `[::1]:50052` (IPv6 localhost, port 50052)
 
 ### Client
 
@@ -151,9 +157,8 @@ cargo run --bin client
 The client will:
 1. Call `SayHello` to get a greeting
 2. Call `GetCounter` to check the current counter value from the database
-3. Call `IncrementCounter` with a value of 1
-4. Call `IncrementCounter` with a value of 5
-5. Call `GetCounter` again to see the updated counter value
+3. Call `IncrementCounter` with various values to update the counter
+4. Call `GetCounter` again to see the updated counter value
 
 Since the counter is stored in SQLite, its value persists between server restarts. Each time you run the client, the counter will continue to increment from its previous value.
 
@@ -168,14 +173,16 @@ To test both server and client together:
 This script:
 1. Builds the project
 2. Checks for an existing SQLite database
-3. Starts the server in the background
-4. Runs the client
-5. Shuts down the server
+3. Applies any pending migrations
+4. Starts the server in the background
+5. Runs the client
+6. Shuts down the server
 
 ## Database Details
 
-The SQLite database (`data.db`) contains a simple schema:
+The SQLite database (`data.db`) contains a schema that's defined in migration files:
 
+### Initial Schema
 ```sql
 CREATE TABLE IF NOT EXISTS counters (
     id TEXT PRIMARY KEY,
@@ -185,13 +192,21 @@ CREATE TABLE IF NOT EXISTS counters (
 );
 ```
 
+### Stats Addition
+```sql
+ALTER TABLE counters ADD COLUMN total_increments INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE counters ADD COLUMN average_increment REAL NOT NULL DEFAULT 0.0;
+ALTER TABLE counters ADD COLUMN highest_value INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE counters ADD COLUMN description TEXT;
+```
+
 Multiple counters can be tracked by ID, with the default counter using the ID "main_counter".
 
 ## Dependencies
 
 - tonic 0.13.0 - gRPC implementation
 - prost 0.13.0 - Protocol Buffers implementation
-- sqlx 0.7.x - Async SQLite client
+- sqlx 0.8.0 - Async SQLite client with migrations support
 - tokio - Async runtime
 - anyhow - Error handling
 
