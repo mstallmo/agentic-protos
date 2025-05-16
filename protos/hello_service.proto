@@ -1,0 +1,42 @@
+syntax = "proto3";
+package hello_service;
+
+service HelloService {
+  // Original method to say hello
+  rpc SayHello(HelloRequest) returns (HelloResponse) {}
+  
+  // New method to increment the counter
+  rpc IncrementCounter(IncrementCounterRequest) returns (IncrementCounterResponse) {}
+  
+  // New method to get the current counter value
+  rpc GetCounter(GetCounterRequest) returns (GetCounterResponse) {}
+}
+
+// Original message definitions
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloResponse {
+  string message = 1;
+}
+
+// New message definitions for counter operations
+message IncrementCounterRequest {
+  // Optional amount to increment by (defaults to 1 if not specified)
+  int32 increment_by = 1;
+}
+
+message IncrementCounterResponse {
+  // The new value after incrementing
+  int32 value = 1;
+}
+
+message GetCounterRequest {
+  // Empty request, no parameters needed
+}
+
+message GetCounterResponse {
+  // The current counter value
+  int32 value = 1;
+}
